@@ -1,27 +1,15 @@
---
--- Copyright (c) 2011 Tero Koskinen <tero.koskinen@iki.fi>
---
--- Permission to use, copy, modify, and distribute this software for any
--- purpose with or without fee is hereby granted, provided that the above
--- copyright notice and this permission notice appear in all copies.
---
--- THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
--- WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
--- MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
--- ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
--- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
--- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
--- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
---
-
 with Ada.Strings.Fixed; use Ada.Strings.Fixed;
 with Ada.Text_IO; use Ada.Text_IO;
 with SHA;
 with SHA.Strings;
 with HMAC_SHA;
 with HTTP;
+with Hauki.Charbuf;
 
 package body OAuth.Easy is
+   use Hauki;
+   use Hauki.Charbuf;
+   
    function "+"(Str : String) return Unbounded_String
      renames To_Unbounded_String;
 
@@ -191,7 +179,7 @@ package body OAuth.Easy is
       Ctx : HMAC_SHA.HMAC_Context;
       Sig : Unbounded_String;
       H : Unbounded_String;
-      Result : Unbounded_String;
+      Result : Charbuf.Char_Buffer;
       R_Code : Long_Integer;
    begin
       Params := OAuth.Create_Parameter_List
@@ -203,6 +191,8 @@ package body OAuth.Easy is
             OAuth.Timestamp,
             To_String (Context.Key) & URL),
          Version      => "1.0");
+      OAuth.Parameter_List.Append (Params, (Key => +"oauth_callback",
+                                            Value => +"oob"));
 
       Base_Str := To_Unbounded_String (OAuth.Create_Base_String
         (Method, URL, Params));
@@ -215,6 +205,7 @@ package body OAuth.Easy is
       HMAC_SHA.Finalize (Result => Digest_Val,
                          Context => Ctx);
       Sig := +(String (SHA.Strings.B64_From_SHA (Digest_Val)));
+
       OAuth.Parameter_List.Append (Params, (Key => +"oauth_signature",
                                             Value => Sig));
       OAuth.Parameter_Sorting.Sort (Params);
@@ -228,6 +219,7 @@ package body OAuth.Easy is
          Header_Value => To_String (H),
          Contents => Result,
          Response_Code => R_Code);
+      Put_Line ("Result: " & To_String (Result));
       Parse_Request_Result
         (To_String (Result), Context.Token, Context.Token_Secret);
    end Request_Token;
@@ -247,7 +239,7 @@ package body OAuth.Easy is
       Ctx : HMAC_SHA.HMAC_Context;
       Sig : Unbounded_String;
       H : Unbounded_String;
-      Result : Unbounded_String;
+      Result : Charbuf.Char_Buffer;
       R_Code : Long_Integer;
    begin
       Params := OAuth.Create_Parameter_List
@@ -262,7 +254,7 @@ package body OAuth.Easy is
          Version      => "1.0");
       OAuth.Parameter_List.Append (Params, (Key => +"oauth_verifier",
                                             Value => +Verifier));
-
+      OAuth.Parameter_Sorting.Sort (Params);
       Base_Str := +(OAuth.Create_Base_String (Method, URL, Params));
       Put_Line ("Base string: " & To_String (Base_Str));
 
@@ -321,9 +313,8 @@ package body OAuth.Easy is
       OAuth.Parameter_Sorting.Sort (OAuth_Params);
       OAuth.Parameter_Sorting.Sort (Params);
       OAuth.Parameter_Sorting.Merge (Target => Params, Source => OAuth_Params);
-
       Base_Str := +(OAuth.Create_Base_String (Method, URL, Params));
-
+      Put_Line ("Base string: " & To_String (Base_Str));
       HMAC_SHA.Initialize
         (Key     => To_String (Context.Secret) & "&" & Temp_Secret,
          Context => Ctx);
@@ -334,9 +325,9 @@ package body OAuth.Easy is
       Sig := +(String (SHA.Strings.B64_From_SHA (Digest_Val)));
       OAuth.Parameter_List.Append (Params, (Key => +"oauth_signature",
                                             Value => Sig));
-      OAuth.Parameter_Sorting.Sort (Params);
       OAuth.Parameter_List.Prepend (Params, (Key => +"realm",
                                             Value => +""));
+      OAuth.Parameter_Sorting.Sort (Params);
       Header := +(OAuth.Params_To_Header (Params));
    end As_Header;
 

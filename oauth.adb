@@ -1,19 +1,3 @@
---
--- Copyright (c) 2011 Tero Koskinen <tero.koskinen@iki.fi>
---
--- Permission to use, copy, modify, and distribute this software for any
--- purpose with or without fee is hereby granted, provided that the above
--- copyright notice and this permission notice appear in all copies.
---
--- THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
--- WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
--- MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
--- ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
--- WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
--- ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
--- OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
---
-
 with Ada.Strings;
 with Ada.Strings.Fixed;
 with Interfaces;
@@ -31,7 +15,7 @@ package body OAuth is
    end Compare_Pairs;
 
    function URL_Encode (Str : String) return String is
-      Reserved : constant String := ":/?#[]@!$&'()*+,;= ";
+      Reserved : constant String := ":/?#[]@!$&'()*+,;= %";
       function Is_Reserved (Char : Character) return Boolean is
       begin
          for I in Reserved'Range loop
@@ -157,20 +141,20 @@ package body OAuth is
          if Is_First then
             Is_First := False;
          else
-            Append (Param_Str, URL_Encode ("&"));
+            Append (Param_Str, "&");
          end if;
          declare
             Pair_Str : Unbounded_String := Element (Pos).Key;
          begin
-            Append (Pair_Str, URL_Encode ("="));
+            Append (Pair_Str, "=");
             Append (Pair_Str, URL_Encode (To_String (Element (Pos).Value)));
-            Append (Param_Str, URL_Encode (To_String (Pair_Str)));
+            Append (Param_Str, To_String (Pair_Str));
          end;
          Next (Pos);
       end loop;
 
       return Method & "&" & URL_Encode (URL) & "&" &
-        To_String (Param_Str);
+        URL_Encode (To_String (Param_Str));
    end Create_Base_String;
 
    function Params_To_String (Request_Parameters : Parameter_List.List)
